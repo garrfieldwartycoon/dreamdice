@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DREAM DICE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Lilita+One&display=swap');
+
+  :root {
+    --bg-grad: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    --ui-glass: rgba(255, 255, 255, 0.12);
+    --ui-border: rgba(255, 255, 255, 0.22);
+    --btn-text: #1e3c72;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: var(--bg-grad);
+    background-attachment: fixed;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+    overflow-x: hidden;
+    transition: background 0.5s ease;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,0.12) 2px, transparent 2px);
+    background-size: 28px 28px;
+  }
+
+  .shadow-text {
+    font-family: 'Lilita One', cursive;
+    text-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  }
+
+  #canvas-fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
+
+  /* NICKNAME MODAL */
+  .name-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px); z-index: 10000; display: flex; align-items: center; justify-content: center;
+  }
+  .name-modal {
+    background: rgba(255,255,255,0.1); border: 1px solid var(--ui-border);
+    backdrop-filter: blur(25px); padding: 40px; border-radius: 24px;
+    text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 400px; width: 90%;
+  }
+  .name-modal h2 { font-family: 'Lilita One', cursive; font-size: 36px; color: #fff; margin-bottom: 20px; }
+  .name-modal input {
+    width: 100%; padding: 16px; font-size: 18px; font-weight: 800; font-family: inherit;
+    border: 2px solid rgba(255,255,255,0.5); border-radius: 12px; background: rgba(255,255,255,0.9);
+    text-align: center; margin-bottom: 20px; outline: none; color: #333;
+  }
+  .name-modal button {
+    background: #fff; color: #000; border: none; padding: 16px 40px;
+    font-size: 18px; font-weight: 900; border-radius: 12px; cursor: pointer; text-transform: uppercase;
+  }
+
+  /* OWNERS */
+  .owners-box {
+    position: fixed; top: 20px; left: 20px; background: var(--ui-glass);
+    backdrop-filter: blur(15px); border: 1px solid var(--ui-border);
+    padding: 14px 20px; border-radius: 16px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
+  }
+  .owners-title { color: #fff; font-weight: 900; font-size: 12px; letter-spacing: 3px; opacity: 0.7; text-transform: uppercase; }
+  .owner-row { display: flex; align-items: center; gap: 10px; text-decoration: none; transition: 0.2s; }
+  .owner-row:hover { transform: translateX(4px); }
+  .owner-row img { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; }
+  .owner-row span { color: #fff; font-size: 14px; font-weight: 800; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+
+  /* TITLE + CONTROLS */
+  h1.main-title { margin-top: 50px; font-size: 52px; letter-spacing: 3px; text-transform: uppercase; z-index: 10; }
+  
+  .top-bar { display: flex; gap: 12px; margin-top: 25px; z-index: 10; justify-content: center; flex-wrap: wrap; }
+  .ui-element {
+    appearance: none; background: #fff; color: var(--btn-text); border: none; border-radius: 10px;
+    padding: 14px 24px; font-family: inherit; font-weight: 900; font-size: 13px; text-transform: uppercase; cursor: pointer;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2); transition: 0.2s;
+  }
+  .ui-element:hover { transform: translateY(-2px); }
+  .select-wrapper { position: relative; }
+  .select-wrapper::after { content: '▼'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 10px; pointer-events: none; color: var(--btn-text);}
+  select.ui-element { padding-right: 40px; outline: none; }
+  .btn-gray { background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+  .btn-red { background: #ff2d55; color: #fff; }
+
+  /* DICE (ABOVE ROLL BUTTON) */
+  .game-section { margin-top: 40px; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+  .dice-area { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .dice {
+    width: 100px; height: 100px; border: 6px solid #fff; border-radius: 22px;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 25px rgba(0,0,0,0.3); transition: 0.2s;
+  }
+  .dice .dot { width: 24px; height: 24px; background-color: #fff; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+  .dice.rolling { animation: shake 0.15s infinite; }
+  @keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    25% { transform: translate(-2px, -2px) rotate(-3deg); }
+    50% { transform: translate(1px, -1px) rotate(3deg); }
+    75% { transform: translate(-2px, 1px) rotate(-1deg); }
+    100% { transform: translate(1px, -2px) rotate(0deg); }
+  }
+
+  /* ROLL BUTTON */
+  .roll-btn {
+    margin-top: 30px; background: #fff; color: var(--btn-text); font-family: inherit; font-weight: 900; font-size: 26px;
+    padding: 18px 60px; border: none; border-radius: 16px; cursor: pointer; text-transform: uppercase; z-index: 10;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: 0.2s;
+  }
+  .roll-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
+  .roll-btn:active { transform: scale(0.95); }
+  .roll-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+  /* ======================== */
+  /* SCORE TRACKER - BELOW ROLL DICE */
+  /* ======================== */
+  .score-tracker {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    background: var(--ui-glass); backdrop-filter: blur(15px);
+    border-radius: 20px; border: 1px solid var(--ui-border);
+    padding: 14px 24px; margin-top: 30px; z-index: 10;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+
+  .icon-picker-wrap { position: relative; }
+  .score-icon-preview {
+    width: 52px; height: 52px; border-radius: 12px; object-fit: cover;
+    border: 3px solid rgba(255,255,255,0.85); background: #222; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: 0.2s; display: block;
+  }
+  .score-icon-preview:hover { transform: scale(1.06); }
+
+  .icon-dropdown {
+    display: none; position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(18px);
+    padding: 10px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.2);
+    flex-direction: column; gap: 8px; z-index: 300;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  }
+  .icon-dropdown.show { display: flex; animation: dropIn 0.2s ease-out; }
+  @keyframes dropIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  .icon-dropdown img {
+    width: 48px; height: 48px; border-radius: 10px; object-fit: cover;
+    cursor: pointer; border: 2px solid transparent; transition: 0.15s;
+  }
+  .icon-dropdown img:hover { border-color: #fff; transform: scale(1.08); }
+
+  .score-val {
+    font-size: 40px; font-weight: 900; font-family: 'Lilita One', cursive;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.4); min-width: 80px; text-align: center;
+  }
+
+  .score-btns { display: flex; gap: 7px; }
+  .score-btn {
+    background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25);
+    font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 14px;
+    cursor: pointer; padding: 8px 12px; border-radius: 10px; transition: 0.15s;
+  }
+  .score-btn:hover { background: #fff; color: var(--btn-text); transform: scale(1.08); }
+  .score-btn:active { transform: scale(0.95); }
+
+  /* HISTORY */
+  .history-container {
+    margin-top: 40px; margin-bottom: 60px; width: 100%; max-width: 550px;
+    background: var(--ui-glass); backdrop-filter: blur(15px);
+    border-radius: 24px; padding: 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    border: 1px solid var(--ui-border); display: none; z-index: 10;
+  }
+  .history-container.show { display: block; }
+  .hist-title-main { font-size: 28px; text-align: center; margin-bottom: 22px; }
+  .hist-stats-box { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 18px; margin-bottom: 22px; }
+  .hist-subtitle { font-family: 'Lilita One', cursive; font-size: 17px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  .hist-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .hist-badge { background: #fff; color: #000; padding: 5px 10px; border-radius: 8px; display: flex; align-items: center; gap: 7px; font-weight: 900; font-size: 13px; }
+  .small-color-box { width: 15px; height: 15px; border-radius: 4px; }
+  .hist-list { display: flex; flex-direction: column; gap: 12px; }
+  .hist-row { display: flex; align-items: center; gap: 12px; }
+  .hist-row-num { font-family: 'Lilita One', cursive; font-size: 20px; width: 28px; }
+  .hist-dice-group { display: flex; gap: 7px; }
+  .hist-mini-dice { width: 34px; height: 34px; border: 3px solid #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .hist-mini-dice .mdot { width: 9px; height: 9px; background: #fff; border-radius: 50%; }
+  .hist-divider { border-bottom: 2px dashed rgba(255,255,255,0.25); margin: 6px 0; }
+
+  /* ROLL OVERLAY */
+  .roll-overlay {
+    position: fixed; inset: 0; background: var(--bg-grad);
+    z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .roll-overlay::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,0.12) 2px, transparent 2px);
+    background-size: 28px 28px;
+  }
+  .roll-overlay.active { opacity: 1; pointer-events: all; }
+  .overlay-title-text { font-size: 48px; margin-bottom: 30px; margin-top: -60px; }
+  .overlay-select {
+    appearance: none; background: #fff; color: var(--btn-text); border: none; border-radius: 8px;
+    padding: 12px 35px 12px 16px; font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 12px; text-transform: uppercase; box-shadow: 0 6px 15px rgba(0,0,0,0.2); outline: none;
+  }
+
+  /* ANTI-BAN */
+  body.anti-ban-active .blur-target { filter: blur(4px); opacity: 0.9; }
+  body.anti-ban-active .dice {
+    border-color: transparent !important; border-radius: 50% !important;
+    filter: blur(10px) !important; box-shadow: none !important; transform: scale(1.1) !important;
+  }
+  body.anti-ban-active .dice.rolling { animation: none; }
+  body.anti-ban-active .dice .dot { display: none; }
+
+  /* SECRET PANEL */
+  .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
+  .panel-overlay.open { opacity: 1; pointer-events: all; }
+  .panel {
+    position: fixed; top: 0; right: 0; width: 340px; height: 100%; background: rgba(20,20,20,0.95);
+    backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.1); z-index: 101;
+    transform: translateX(100%); transition: 0.4s cubic-bezier(0.77,0,0.18,1); padding: 40px 30px; color: #fff;
+  }
+  .panel.open { transform: translateX(0); }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .toggle-row.disabled { opacity: 0.4; }
+  .toggle-info { display: flex; align-items: center; gap: 14px; }
+  .color-preview { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #fff; }
+  .color-name { font-weight: 800; font-size: 15px; }
+  .keybind-badge { background: #333; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 900; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); }
+  .keybind-badge:hover { background: #fff; color: #000; }
+  .keybind-badge.waiting { background: #ff2d55; color: #fff; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.6; } }
+  .switch { position: relative; width: 48px; height: 26px; }
+  .switch input { display: none; }
+  .switch .slider { position: absolute; inset: 0; background: #444; border-radius: 24px; cursor: pointer; transition: 0.3s; }
+  .switch .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s; }
+  .switch input:checked + .slider { background: #fff; }
+  .switch input:checked + .slider::before { transform: translateX(22px); background: #000; }
+</style>
+</head>
+<body>
+
+<div class="name-modal-overlay" id="name-modal" style="display: none;">
+  <div class="name-modal">
+    <h2>DREAM DICE</h2>
+    <input type="text" id="name-input" placeholder="Your Nickname" autocomplete="off" onkeypress="if(event.key === 'Enter') saveName()">
+    <button onclick="saveName()">ENTER GAME</button>
+  </div>
+</div>
+
+<canvas id="canvas-fx"></canvas>
+
+<div class="owners-box blur-target">
+  <div class="owners-title">OWNERS</div>
+  <a class="owner-row" href="https://www.tiktok.com/@razdachaidupbreinot" target="_blank">
+    <img src="https://p16-common-sign.tiktokcdn.com/tos-alisg-avt-0068/5eb92b642379285046d242261166b5ba~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=904e49c2&x-expires=1790370000&x-signature=nHeGkD0gx5Yosv6gDZqcCUDzHSg%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my2">
+    <span>auraofexplosing</span>
+  </a>
+  <a class="owner-row" href="https://www.tiktok.com/@protectxtsy2" target="_blank">
+    <img src="https://p16-common-sign.tiktokcdn.com/tos-maliva-avt-0068/7e1c6f0173944f69abf5e291bcec17b4~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=8fd5dbe0&x-expires=1790370000&x-signature=bnkMXi0YgFLO%2FLIJCX7Q%2FgBk6HU%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my2">
+    <span>wass1q</span>
+  </a>
+</div>
+
+<h1 class="main-title shadow-text blur-target">DREAM DICE</h1>
+
+<div class="top-bar blur-target">
+  <div class="select-wrapper">
+    <select class="ui-element" id="dice-count" onchange="playUiSound(); updateDiceCount();">
+      <option value="1">1 DICE</option><option value="2">2 DICE</option><option value="3">3 DICE</option>
+      <option value="4" selected>4 DICE</option><option value="5">5 DICE</option><option value="6">6 DICE</option>
+    </select>
+  </div>
+  <div class="select-wrapper">
+    <select class="ui-element" id="theme-select" onchange="playUiSound(); updateTheme();">
+      <option value="dream">DREAMY NIGHT</option>
+      <option value="sunset">SUNSET GLOW</option>
+      <option value="cyber">NEON CYBER</option>
+      <option value="mint">MINTY FRESH</option>
+    </select>
+  </div>
+  <button class="ui-element btn-gray" id="btn-antiban" onclick="playUiSound(); toggleAntiBan();">ANTI-BAN: OFF</button>
+</div>
+
+<!-- DICE ABOVE ROLL BUTTON -->
+<div class="game-section blur-target">
+  <div class="dice-area" id="main-dice-area"></div>
+</div>
+
+<!-- ROLL DICE BUTTON -->
+<button class="roll-btn blur-target" id="roll-btn" onclick="startRoll()">ROLL DICE</button>
+
+<!-- SCORE TRACKER BELOW ROLL DICE -->
+<div class="score-tracker blur-target">
+  <div class="icon-picker-wrap">
+    <img class="score-icon-preview" id="score-icon-preview"
+         src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdI4tRkkFqUWbvaIBTCb6JGLyY3p3LCXYF4Tqh9R282w&s=10"
+         onclick="playUiSound(); toggleIconMenu(event)">
+    <div class="icon-dropdown" id="icon-dropdown">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdI4tRkkFqUWbvaIBTCb6JGLyY3p3LCXYF4Tqh9R282w&s=10" onclick="playUiSound(); selectIcon(this.src)">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3nkG_mOcd5Vrr6SLIicyseIan2bCV339zXX1i8NVTCg&s=10" onclick="playUiSound(); selectIcon(this.src)">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSE-LqV0IwId255LovUPWAzmHY3kC9KcqOr79m507KbVw&s=10" onclick="playUiSound(); selectIcon(this.src)">
+    </div>
+  </div>
+  <div class="score-val shadow-text" id="score-val">+0</div>
+  <div class="score-btns">
+    <button class="score-btn" onclick="playUiSound(); changeScore(-1)">-1</button>
+    <button class="score-btn" onclick="playUiSound(); changeScore(-10)">-10</button>
+    <button class="score-btn" onclick="playUiSound(); changeScore(1)">+1</button>
+    <button class="score-btn" onclick="playUiSound(); changeScore(10)">+10</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="history-container blur-target" id="history-container">
+  <div class="hist-title-main shadow-text">YOUR LAST 20 ROLLS</div>
+  <div class="hist-stats-box">
+    <div class="hist-subtitle shadow-text">STATS:</div>
+    <div class="hist-badges" id="hist-stats"></div>
+    <div class="hist-subtitle shadow-text" style="margin-top:10px;">LONGEST STREAK:</div>
+    <div class="hist-badges" id="hist-streak"></div>
+  </div>
+  <div class="hist-subtitle shadow-text">THIS ROLL:</div>
+  <div id="hist-current"></div>
+  <div class="hist-divider" style="margin-top:15px; margin-bottom:15px;"></div>
+  <div class="hist-subtitle shadow-text">PREVIOUS ROLLS:</div>
+  <div class="hist-list" id="hist-previous"></div>
+</div>
+
+<!-- ROLL OVERLAY -->
+<div class="roll-overlay" id="roll-overlay">
+  <div class="overlay-title-text shadow-text blur-target">ROLL COLOR DICE</div>
+  <div class="top-bar blur-target" style="margin-top:0; margin-bottom:40px;">
+    <div class="select-wrapper"><select class="overlay-select"><option>4 DICE</option></select></div>
+    <div class="select-wrapper"><select class="overlay-select"><option>COLOR D...</option></select></div>
+    <div class="select-wrapper"><select class="overlay-select"><option>SELECT 1</option></select></div>
+  </div>
+  <div class="dice-area" id="overlay-dice-area"></div>
+</div>
+
+<!-- SECRET PANEL -->
+<div class="panel-overlay" id="panel-overlay" onclick="playUiSound(); toggleSecret();"></div>
+<div class="panel" id="secret-panel">
+  <h2 style="margin-bottom:10px;">НАСТРОЙКА ЦВЕТОВ</h2>
+  <p style="font-size: 12px; color: #888; margin-bottom: 30px;">Нажми на бинд → нажми новую клавишу</p>
+  <div id="toggles"></div>
+</div>
+
+<script>
+let audioCtx;
+function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function playUiSound() {
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'sine'; osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+}
+function playRollTick() {
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'square'; osc.frequency.setValueAtTime(150 + Math.random()*50, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+}
+
+const THEMES = {
+  dream:  { bg: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)', text: '#1e3c72' },
+  sunset: { bg: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)', text: '#d94b29' },
+  cyber:  { bg: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)', text: '#0a151a' },
+  mint:   { bg: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', text: '#0e7a71' }
+};
+function updateTheme() {
+  const t = THEMES[document.getElementById('theme-select').value];
+  document.documentElement.style.setProperty('--bg-grad', t.bg);
+  document.documentElement.style.setProperty('--btn-text', t.text);
+}
+
+let currentScore = 0;
+function changeScore(amount) {
+  currentScore += amount;
+  document.getElementById('score-val').innerText = (currentScore >= 0 ? '+' : '') + currentScore;
+}
+
+function toggleIconMenu(e) {
+  e.stopPropagation();
+  document.getElementById('icon-dropdown').classList.toggle('show');
+}
+function selectIcon(src) {
+  document.getElementById('score-icon-preview').src = src;
+  document.getElementById('icon-dropdown').classList.remove('show');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.icon-picker-wrap')) {
+    document.getElementById('icon-dropdown').classList.remove('show');
+  }
+});
+
+window.onload = () => {
+  if (!localStorage.getItem('explosion_username')) {
+    document.getElementById('name-modal').style.display = 'flex';
+  }
+};
+function saveName() {
+  const val = document.getElementById('name-input').value.trim();
+  if (val) {
+    localStorage.setItem('explosion_username', val);
+    document.getElementById('name-modal').style.display = 'none';
+    initAudio(); playUiSound();
+    setTimeout(() => startRoll(), 400);
+  }
+}
+
+let isAntiBan = false;
+function toggleAntiBan() {
+  isAntiBan = !isAntiBan;
+  const btn = document.getElementById('btn-antiban');
+  btn.innerText = 'ANTI-BAN: ' + (isAntiBan ? 'ON' : 'OFF');
+  btn.className = 'ui-element ' + (isAntiBan ? 'btn-red' : 'btn-gray');
+  document.body.classList.toggle('anti-ban-active', isAntiBan);
+}
+
+let COLORS = [
+  { id: 'Orange', hex: '#ff9500', key: 'O' },
+  { id: 'Red',    hex: '#ff2d55', key: 'R' },
+  { id: 'Purple', hex: '#af52de', key: 'P' },
+  { id: 'Green',  hex: '#34c759', key: 'G' },
+  { id: 'Yellow', hex: '#ffcc00', key: 'Y' },
+  { id: 'Blue',   hex: '#007aff', key: 'B' }
+];
+let activeColors = {}; COLORS.forEach(c => activeColors[c.id] = true);
+let rollHistory = []; let currentFinalColors = []; let isRolling = false; let rebindingColorId = null;
+
+const togglesContainer = document.getElementById('toggles');
+function renderToggles() {
+  togglesContainer.innerHTML = '';
+  COLORS.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'toggle-row' + (activeColors[c.id] ? '' : ' disabled');
+    row.id = `row-${c.id}`;
+    row.innerHTML = `
+      <div class="toggle-info">
+        <div class="color-preview" style="background:${c.hex}"></div>
+        <span class="color-name">${c.id}</span>
+        <span class="keybind-badge" id="badge-${c.id}" onclick="playUiSound(); startRebind('${c.id}')">${c.key}</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" ${activeColors[c.id]?'checked':''} id="chk-${c.id}" onchange="playUiSound(); toggleColor('${c.id}')">
+        <span class="slider"></span>
+      </label>`;
+    togglesContainer.appendChild(row);
+  });
+}
+renderToggles();
+
+function toggleColor(id) {
+  activeColors[id] = document.getElementById(`chk-${id}`).checked;
+  document.getElementById(`row-${id}`).classList.toggle('disabled', !activeColors[id]);
+  document.getElementById('roll-btn').disabled = getActivePool().length === 0;
+}
+function getActivePool() { return COLORS.filter(c => activeColors[c.id]); }
+function startRebind(id) {
+  rebindingColorId = id;
+  const badge = document.getElementById(`badge-${id}`);
+  badge.innerText = "WAIT.."; badge.classList.add('waiting');
+}
+
+let secretOpen = false;
+function toggleSecret() {
+  secretOpen = !secretOpen;
+  document.getElementById('secret-panel').classList.toggle('open', secretOpen);
+  document.getElementById('panel-overlay').classList.toggle('open', secretOpen);
+  if (document.activeElement) document.activeElement.blur();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  initAudio();
+  if (rebindingColorId) {
+    e.preventDefault(); playUiSound();
+    COLORS.find(c => c.id === rebindingColorId).key = e.key.toUpperCase();
+    rebindingColorId = null; renderToggles(); return;
+  }
+  if (e.key === 'Tab') { e.preventDefault(); playUiSound(); toggleSecret(); return; }
+  if (e.key === 'Escape' && secretOpen) { playUiSound(); toggleSecret(); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !isRolling && !secretOpen) {
+    e.preventDefault(); startRoll(); return;
+  }
+  const colorObj = COLORS.find(c => c.key === e.key.toUpperCase());
+  if (colorObj) {
+    playUiSound();
+    const cb = document.getElementById(`chk-${colorObj.id}`);
+    cb.checked = !cb.checked; toggleColor(colorObj.id);
+  }
+});
+
+const mainDiceArea = document.getElementById('main-dice-area');
+const overlayDiceArea = document.getElementById('overlay-dice-area');
+let mainDiceElements = []; let overlayDiceElements = [];
+
+function updateDiceCount() {
+  const count = parseInt(document.getElementById('dice-count').value);
+  mainDiceArea.innerHTML = ''; mainDiceElements = [];
+  overlayDiceArea.innerHTML = ''; overlayDiceElements = [];
+  for (let i = 0; i < count; i++) {
+    const randColor = COLORS[Math.floor(Math.random() * COLORS.length)].hex;
+    const d1 = document.createElement('div'); d1.className = 'dice';
+    d1.innerHTML = `<div class="dot"></div>`; d1.style.backgroundColor = randColor;
+    mainDiceArea.appendChild(d1); mainDiceElements.push(d1);
+    const d2 = document.createElement('div'); d2.className = 'dice';
+    d2.innerHTML = `<div class="dot"></div>`; d2.style.backgroundColor = randColor;
+    overlayDiceArea.appendChild(d2); overlayDiceElements.push(d2);
+  }
+}
+updateDiceCount();
+
+function startRoll() {
+  if (getActivePool().length === 0 || isRolling) return;
+  isRolling = true; initAudio(); playUiSound();
+  document.getElementById('roll-btn').disabled = true;
+  document.getElementById('roll-overlay').classList.add('active');
+  let rolls = 0; const maxRolls = 22;
+  overlayDiceElements.forEach(d => d.classList.add('rolling'));
+  const interval = setInterval(() => {
+    playRollTick();
+    overlayDiceElements.forEach(d => d.style.backgroundColor = COLORS[Math.floor(Math.random() * COLORS.length)].hex);
+    rolls++;
+    if (rolls >= maxRolls) {
+      clearInterval(interval);
+      overlayDiceElements.forEach(d => d.classList.remove('rolling'));
+      currentFinalColors = [];
+      const finalPool = getActivePool();
+      overlayDiceElements.forEach(d => {
+        const finalColor = finalPool[Math.floor(Math.random() * finalPool.length)].hex;
+        d.style.backgroundColor = finalColor;
+        currentFinalColors.push(finalColor);
+        if (!isAntiBan) {
+          const rect = d.getBoundingClientRect();
+          createExplosion(rect.left + rect.width/2, rect.top + rect.height/2, finalColor);
+        }
+      });
+      setTimeout(finishRollAndClose, 1200);
+    }
+  }, 65);
+}
+
+function finishRollAndClose() {
+  document.getElementById('roll-overlay').classList.remove('active');
+  mainDiceElements.forEach((d, i) => d.style.backgroundColor = currentFinalColors[i]);
+  rollHistory.unshift(currentFinalColors);
+  if (rollHistory.length > 20) rollHistory.pop();
+  renderHistory();
+  isRolling = false;
+  document.getElementById('roll-btn').disabled = false;
+}
+
+function renderHistory() {
+  const container = document.getElementById('history-container');
+  container.classList.add('show');
+  const statsBox = document.getElementById('hist-stats');
+  const streakBox = document.getElementById('hist-streak');
+  const currentBox = document.getElementById('hist-current');
+  const prevBox = document.getElementById('hist-previous');
+  statsBox.innerHTML = ''; streakBox.innerHTML = ''; currentBox.innerHTML = ''; prevBox.innerHTML = '';
+
+  let counts = {}; let flat = [];
+  for (let i = rollHistory.length - 1; i >= 0; i--) flat = flat.concat(rollHistory[i]);
+  let currColor = null, currStreak = 0, maxColor = null, maxStreak = 0;
+  flat.forEach(hex => {
+    counts[hex] = (counts[hex] || 0) + 1;
+    if (hex === currColor) currStreak++; else { currColor = hex; currStreak = 1; }
+    if (currStreak > maxStreak) { maxStreak = currStreak; maxColor = hex; }
+  });
+  Object.keys(counts).map(hex => ({hex, count: counts[hex]}))
+    .sort((a,b) => b.count - a.count)
+    .forEach((item, idx) => {
+      statsBox.innerHTML += `<div class="hist-badge"><div class="small-color-box" style="background:${item.hex}"></div>x${item.count}${idx===0?' 🏆':''}</div>`;
+    });
+  if (maxColor && maxStreak > 1) {
+    streakBox.innerHTML = `<div class="hist-badge"><div class="small-color-box" style="background:${maxColor}"></div>x${maxStreak} 🔥</div>`;
+  } else {
+    streakBox.innerHTML = `<div class="hist-badge" style="opacity:0.6;background:rgba(255,255,255,0.2)">No streaks yet</div>`;
+  }
+  const makeGroup = colors => colors.map(h => `<div class="hist-mini-dice" style="background:${h}"><div class="mdot"></div></div>`).join('');
+  currentBox.innerHTML = `<div class="hist-row"><div class="hist-row-num shadow-text">1.</div><div class="hist-dice-group">${makeGroup(rollHistory[0])}</div></div>`;
+  const limit = Math.min(rollHistory.length, 11);
+  for (let i = 1; i < limit; i++) {
+    prevBox.innerHTML += `<div class="hist-row"><div class="hist-row-num shadow-text">${i+1}.</div><div class="hist-dice-group">${makeGroup(rollHistory[i])}</div></div>${i < limit-1 ? '<div class="hist-divider"></div>' : ''}`;
+  }
+}
+
+const canvas = document.getElementById('canvas-fx');
+const ctx = canvas.getContext('2d');
+let width, height, particles = [];
+function resizeCanvas() { width = canvas.width = innerWidth; height = canvas.height = innerHeight; }
+addEventListener('resize', resizeCanvas); resizeCanvas();
+function createExplosion(x, y, color) {
+  for (let i = 0; i < 32; i++) {
+    particles.push({
+      x, y, vx: (Math.random()-0.5)*18, vy: (Math.random()-0.5)*18-3,
+      life: 1, decay: Math.random()*0.02+0.015, color, size: Math.random()*7+4
+    });
+  }
+}
+function animateParticles() {
+  ctx.clearRect(0,0,width,height);
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i,1);
+    else {
+      ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+</script>
+</body>
+</html>
